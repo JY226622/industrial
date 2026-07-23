@@ -12,9 +12,9 @@
 
 ## 技术栈
 - **数据处理**：Python + Pandas + NumPy + SciPy
-- **数据存储**：SQLite（替代阿里云RDS）
-- **机器学习**：Scikit-learn（替代阿里云PAI）
-- **可视化**：ECharts 5.4（替代阿里云DataV）
+- **数据存储**：SQLite
+- **机器学习**：Scikit-learn
+- **可视化**：ECharts 5.4
 
 ## 功能模块
 1. **数据采集** - 自动下载UCI AI4I 2020真实数据集
@@ -73,12 +73,6 @@ industrial_iot_project/
 | motor4 | 扭矩 | 输出扭矩 |
 | motor5 | 工具磨损 | 刀具磨损量 |
 | motor6 | 温差 | 过程-空气温度差 |
-| motor7 | 输出功率 | 转速×扭矩 |
-| motor8 | 温度比 | 过程/空气温度比 |
-| motor9 | 扭矩应力 | 扭矩平方 |
-| motor10 | 转速变化率 | 滑动差分 |
-| motor11 | 热累积 | 温度×磨损 |
-| motor12 | 磨损功率比 | 磨损/功率 |
 
 ## 故障类型
 1. 正常运行
