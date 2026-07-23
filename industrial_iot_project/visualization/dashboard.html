@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业大数据实时监控大屏</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0e27; color: #fff; font-family: 'Microsoft YaHei', sans-serif; overflow: hidden; height: 100vh; }
+        .dashboard-container { width: 100vw; height: 100vh; background: linear-gradient(135deg, #0a0e27 0%, #1a1f4e 50%, #0a0e27 100%); padding: 10px; display: flex; flex-direction: column; }
+        .header { height: 60px; display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 2px solid #00d4ff; margin-bottom: 10px; }
+        .header h1 { font-size: 28px; font-weight: bold; background: linear-gradient(90deg, #00d4ff, #00ff88, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); letter-spacing: 8px; }
+        .header .time-display { position: absolute; right: 20px; font-size: 14px; color: #00d4ff; }
+        .header .status-badge { position: absolute; left: 20px; padding: 5px 15px; background: rgba(0, 255, 136, 0.2); border: 1px solid #00ff88; border-radius: 20px; font-size: 12px; color: #00ff88; }
+        .header .dataset-info { position: absolute; left: 140px; font-size: 12px; color: #88c8e8; }
+        .main-content { flex: 1; display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; min-height: 0; }
+        .panel { background: rgba(0, 50, 80, 0.3); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 5px; padding: 10px; position: relative; }
+        .panel::before { content: ''; position: absolute; top: 0; left: 0; width: 20px; height: 20px; border-top: 2px solid #00d4ff; border-left: 2px solid #00d4ff; }
+        .panel::after { content: ''; position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; border-bottom: 2px solid #00d4ff; border-right: 2px solid #00d4ff; }
+        .panel-title { font-size: 16px; color: #00d4ff; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid rgba(0, 212, 255, 0.3); display: flex; align-items: center; }
+        .panel-title::before { content: ''; width: 4px; height: 16px; background: #00d4ff; margin-right: 8px; }
+        .left-column { display: flex; flex-direction: column; gap: 10px; }
+        .stats-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-card { background: rgba(0, 100, 150, 0.2); border: 1px solid rgba(0, 212, 255, 0.4); border-radius: 4px; padding: 10px; text-align: center; }
+        .stat-card .value { font-size: 22px; font-weight: bold; color: #00ff88; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+        .stat-card.warning .value { color: #ffaa00; text-shadow: 0 0 10px rgba(255, 170, 0, 0.5); }
+        .stat-card .label { font-size: 11px; color: #88c8e8; margin-top: 5px; }
+        .sensor-values { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; flex: 1; overflow-y: auto; }
+        .sensor-item { background: rgba(0, 80, 120, 0.3); border: 1px solid rgba(0, 212, 255, 0.2); border-radius: 3px; padding: 6px 8px; }
+        .sensor-item .name { font-size: 12px; color: #88c8e8; }
+        .sensor-item .value { font-size: 20px; font-family: 'Courier New', monospace; color: #00ff88; font-weight: bold; text-align: right; text-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
+        .center-column { display: flex; flex-direction: column; gap: 10px; }
+        .chart-large { flex: 2; min-height: 0; }
+        .chart-medium { flex: 1; min-height: 0; }
+        .right-column { display: flex; flex-direction: column; gap: 10px; }
+        .fault-list { flex: 1; overflow-y: auto; }
+        .fault-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; margin-bottom: 6px; background: rgba(0, 80, 120, 0.2); border-left: 3px solid #00d4ff; border-radius: 0 3px 3px 0; }
+        .fault-item.warning { border-left-color: #ffaa00; }
+        .fault-item.danger { border-left-color: #ff4444; }
+        .fault-item .fault-name { font-size: 12px; color: #fff; }
+        .fault-item .fault-count { font-size: 11px; color: #88c8e8; }
+        .fault-item .fault-level { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
+        .fault-item.warning .fault-level { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
+        .fault-item.danger .fault-level { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+        .model-metrics { display: flex; flex-direction: column; gap: 8px; }
+        .metric-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(0, 212, 255, 0.1); }
+        .metric-item .metric-name { font-size: 12px; color: #88c8e8; }
+        .metric-item .metric-value { font-size: 14px; font-weight: bold; color: #00ff88; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 212, 255, 0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 212, 255, 0.5); border-radius: 2px; }
+    </style>
+<base target="_blank">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="status-badge">● 系统运行正常</div>
+            <div class="dataset-info">数据集：AI4I 2020 Predictive Maintenance</div>
+            <h1>工业设备故障诊断监控大屏</h1>
+            <div class="time-display" id="currentTime"></div>
+        </div>
+        <div class="main-content">
+            <div class="left-column">
+                <div class="panel" style="flex: 0.9;">
+                    <div class="panel-title">数据概览</div>
+                    <div class="stats-cards">
+                        <div class="stat-card"><div class="value" id="totalRecords">0</div><div class="label">数据总量</div></div>
+                        <div class="stat-card warning"><div class="value" id="failureCount">0</div><div class="label">故障样本</div></div>
+                        <div class="stat-card"><div class="value" id="modelAccuracy">0%</div><div class="label">诊断准确率</div></div>
+                        <div class="stat-card"><div class="value" id="channelCount">5</div><div class="label">传感器</div></div>
+                    </div>
+                </div>
+                <div class="panel" style="flex: 2;">
+                    <div class="panel-title">传感器实时数据(标准化)</div>
+                    <div class="sensor-values" id="sensorValues"></div>
+                </div>
+                <div class="panel" style="flex: 1.2;">
+                    <div class="panel-title">故障类型分布</div>
+                    <div id="faultPieChart" style="width:100%;height:calc(100% - 30px);"></div>
+                </div>
+            </div>
+            <div class="center-column">
+                <div class="panel chart-large">
+                    <div class="panel-title">设备运行参数实时趋势</div>
+                    <div id="trendChart" style="width:100%;height:calc(100% - 30px);"></div>
+                </div>
+                <div class="panel chart-medium">
+                    <div class="panel-title">各故障类型特征对比 (RMS)</div>
+                    <div id="rmsChart" style="width:100%;height:calc(100% - 30px);"></div>
+                </div>
+            </div>
+            <div class="right-column">
+                <div class="panel" style="flex:0.6;">
+                    <div class="panel-title">当前设备状态</div>
+                    <div style="text-align:center;padding:10px 0;">
+                        <div style="font-size:32px;color:#00ff88;font-weight:bold;text-shadow:0 0 20px rgba(0,255,136,0.5);" id="currentState">加载中...</div>
+                        <div style="font-size:11px;color:#88c8e8;margin-top:8px;" id="currentTimeData">--</div>
+                    </div>
+                </div>
+                <div class="panel" style="flex:0.7;">
+                    <div class="panel-title">故障诊断模型指标</div>
+                    <div class="model-metrics" id="modelMetrics">
+                        <div class="metric-item"><span class="metric-name">算法模型</span><span class="metric-value" style="font-size:12px;">随机森林</span></div>
+                        <div class="metric-item"><span class="metric-name">总体准确率</span><span class="metric-value" id="metricAccuracy">--</span></div>
+                        <div class="metric-item"><span class="metric-name">故障类型数</span><span class="metric-value" id="metricFaultTypes">--</span></div>
+                        <div class="metric-item"><span class="metric-name">最重要特征</span><span class="metric-value" style="font-size:11px;" id="metricTopFeature">--</span></div>
+                    </div>
+                </div>
+                <div class="panel" style="flex:1;">
+                    <div class="panel-title">故障类型字典</div>
+                    <div class="fault-list" id="faultList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   <script>
+        // 全局图表、窗口配置变量
+        let dashboardData = null;
+        let trendChart, rmsChart, faultPieChart;
+
+        const TOTAL_POINTS = 200;
+        const WINDOW_SIZE = 100;
+        let windowStart = 0;
+        let windowEnd = WINDOW_SIZE;
+        let chartStartTime = null; // 趋势图实时时间起点
+
+        // 生成实时北京时间标签（HH:mm:ss格式）
+        function generateRealtimeTimestamps(startTime, count) {
+            const timestamps = [];
+            for (let i = 0; i < count; i++) {
+                const t = new Date(startTime.getTime() + i * 1000);
+                const h = String(t.getHours()).padStart(2, '0');
+                const m = String(t.getMinutes()).padStart(2, '0');
+                const s = String(t.getSeconds()).padStart(2, '0');
+                timestamps.push(`${h}:${m}:${s}`);
+            }
+            return timestamps;
+        }
+
+        // 更新页面顶部系统时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleString('zh-CN');
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // ========== 异步读取 dashboard_data.json ==========
+        async function loadData() {
+            try {
+                // 请求当前页面同目录下的dashboard_data.json
+                const res = await fetch('./dashboard_data.json');
+                if (!res.ok) {
+                    throw new Error(`文件读取失败，状态码：${res.status}`);
+                }
+                // 解析json为全局dashboardData
+                dashboardData = await res.json();
+                // 加载成功后初始化大屏所有图表与面板
+                initDashboard();
+            } catch (e) {
+                console.error('读取dashboard_data.json失败：', e);
+                const stateDom = document.getElementById('currentState');
+                stateDom.textContent = '数据文件加载失败，请检查json文件是否存在';
+                stateDom.style.color = '#ff4444';
+            }
+        }
+
+        // 初始化大屏所有卡片、图表、指标
+        function initDashboard() {
+            document.getElementById('totalRecords').textContent = dashboardData.overview.total_records;
+            document.getElementById('failureCount').textContent = dashboardData.overview.failure_count;
+
+            if (dashboardData.model_results) {
+                const acc = (dashboardData.model_results.random_forest.accuracy * 100).toFixed(1);
+                document.getElementById('modelAccuracy').textContent = acc + '%';
+                document.getElementById('metricAccuracy').textContent = acc + '%';
+                document.getElementById('metricFaultTypes').textContent = dashboardData.model_results.fault_types - 1  + '类';
+                if (dashboardData.model_results.feature_importance.length > 0) {
+                    const topFeat = dashboardData.model_results.feature_importance[0].feature;
+                    document.getElementById('metricTopFeature').textContent = dashboardData.channel_names[topFeat] || topFeat;
+                }
+            }
+
+            updateSensorValues(0);
+            updateCurrentState(0);
+            updateFaultList();
+            initTrendChart();
+            initRmsChart();
+            initFaultPieChart();
+
+            setInterval(slideWindow, 1000);
+        }
+
+        // 更新传感器数值面板
+        function updateSensorValues(idx) {
+            const container = document.getElementById('sensorValues');
+            container.innerHTML = '';
+            const sensors = [
+                { key: 'air_temperature', name: '空气温度', unit: 'K', decimals: 3 },
+                { key: 'process_temperature', name: '过程温度', unit: 'K', decimals: 3 },
+                { key: 'rotational_speed', name: '转速', unit: 'rpm', decimals: 3 },
+                { key: 'torque', name: '扭矩', unit: 'Nm', decimals: 3 },
+                { key: 'tool_wear', name: '工具磨损时长', unit: 'min', decimals: 3 }
+            ];
+            const trend = dashboardData.trend;
+            const motorKeys = ['motor1', 'motor2', 'motor3', 'motor4', 'motor5'];
+            sensors.forEach((s, i) => {
+                const val = trend[motorKeys[i]][idx];
+                const div = document.createElement('div');
+                div.className = 'sensor-item';
+                if (i === 4) div.style.gridColumn = 'span 2';
+                div.innerHTML = `<div class="name">${s.name} (${s.unit})</div><div class="value" id="val-${s.key}">${val.toFixed(s.decimals)}</div>`;
+                container.appendChild(div);
+            });
+        }
+
+        // 更新设备当前故障状态
+        function updateCurrentState(idx) {
+            const trend = dashboardData.trend;
+            const stateEl = document.getElementById('currentState');
+            const timeEl = document.getElementById('currentTimeData');
+            const faultState = trend.fault_states[idx];
+            stateEl.textContent = faultState;
+
+            // 兜底：确保 chartStartTime 已初始化
+            if (!chartStartTime) {
+                chartStartTime = new Date(Date.now() - WINDOW_SIZE * 1000);
+            }
+            // 采样时间取窗口最右端的实时北京时间
+            const sampleTime = new Date(chartStartTime.getTime() + WINDOW_SIZE * 1000);
+            const h = String(sampleTime.getHours()).padStart(2, '0');
+            const m = String(sampleTime.getMinutes()).padStart(2, '0');
+            const s = String(sampleTime.getSeconds()).padStart(2, '0');
+            timeEl.textContent = '采样时间: ' + `${h}:${m}:${s}`;
+
+            if (faultState === '正常运行') {
+                stateEl.style.color = '#00ff88';
+                stateEl.style.textShadow = '0 0 20px rgba(0, 255, 136, 0.5)';
+            } else {
+                stateEl.style.color = '#ff4444';
+                stateEl.style.textShadow = '0 0 20px rgba(255, 68, 68, 0.5)';
+            }
+        }
+
+        // 故障类型统计列表渲染
+        function updateFaultList() {
+            const container = document.getElementById('faultList');
+            container.innerHTML = '';
+            dashboardData.fault_types.forEach(fault => {
+                let levelClass = '';
+                if (fault.fault_severity === '严重') levelClass = 'danger';
+                else if (fault.fault_severity === '中等' || fault.fault_severity === '轻微') levelClass = 'warning';
+                const stat = dashboardData.fault_stats.find(s => s.fault_type === fault.fault_code.toLowerCase());
+                const count = stat ? stat.count : 0;
+                const div = document.createElement('div');
+                div.className = `fault-item ${levelClass}`;
+                div.innerHTML = `<div><div class="fault-name">${fault.fault_name}</div><div class="fault-count">${count} 条记录</div></div><span class="fault-level">${fault.fault_severity}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        // 趋势曲线图表初始化
+        function initTrendChart() {
+            trendChart = echarts.init(document.getElementById('trendChart'));
+            const t = dashboardData.trend;
+
+            // 初始化实时时间起点：当前时间往前推一个窗口大小
+            if (!chartStartTime) {
+                chartStartTime = new Date(Date.now() - WINDOW_SIZE * 1000);
+            }
+
+            // 计算温差序列：过程温度(motor2) - 空气温度(motor1)
+            const diffTemp = t.motor2.map((v, i) => v - t.motor1[i]);
+
+            // 定义统一的颜色配置
+            const colors = {
+                '温差': '#ff6b6b',
+                '转速': '#00d4ff',
+                '磨损': '#00ff88',
+                '扭矩': '#ffaa00'
+            };
+
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(0, 30, 60, 0.9)',
+                    borderColor: '#00d4ff',
+                    textStyle: { color: '#fff' },
+                    formatter: function(params) {
+                        let html = params[0].axisValue + '<br/>';
+                        params.forEach(p => {
+                            const decimals = p.seriesName === '温差' ? 4 : 3;
+                            html += `${p.marker} ${p.seriesName}: ${p.value.toFixed(decimals)}<br/>`;
+                        });
+                        return html;
+                    }
+                },
+                legend: {
+                    data: [
+                        { name: '温差', icon: 'roundRect', itemStyle: { color: colors['温差'] } },
+                        { name: '转速', icon: 'roundRect', itemStyle: { color: colors['转速'] } },
+                        { name: '磨损', icon: 'roundRect', itemStyle: { color: colors['磨损'] } },
+                        { name: '扭矩', icon: 'roundRect', itemStyle: { color: colors['扭矩'] } }
+                    ],
+                    textStyle: { color: '#88c8e8' },
+                    top: 0,
+                    itemWidth: 20,
+                    itemHeight: 3
+                },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: generateRealtimeTimestamps(chartStartTime, WINDOW_SIZE),
+                    axisLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.3)' } },
+                    axisLabel: { color: '#88c8e8', fontSize: 10 }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '标准化幅值',
+                    nameTextStyle: { color: '#88c8e8' },
+                    axisLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.3)' } },
+                    axisLabel: { color: '#88c8e8', fontSize: 10 },
+                    splitLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.1)' } }
+                },
+                series: [
+                    {
+                        name: '温差',
+                        type: 'line',
+                        smooth: true,
+                        data: diffTemp.slice(windowStart, windowEnd),
+                        lineStyle: { color: colors['温差'], width: 1.5 },
+                        itemStyle: { color: colors['温差'] },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(255, 107, 107, 0.3)' },
+                                { offset: 1, color: 'rgba(255, 107, 107, 0)' }
+                            ])
+                        },
+                        showSymbol: false
+                    },
+                    {
+                        name: '转速',
+                        type: 'line',
+                        smooth: true,
+                        data: t.speed_group.slice(windowStart, windowEnd),
+                        lineStyle: { color: colors['转速'], width: 1.5 },
+                        itemStyle: { color: colors['转速'] },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(0, 212, 255, 0.3)' },
+                                { offset: 1, color: 'rgba(0, 212, 255, 0)' }
+                            ])
+                        },
+                        showSymbol: false
+                    },
+                    {
+                        name: '磨损',
+                        type: 'line',
+                        smooth: true,
+                        data: t.wear_group.slice(windowStart, windowEnd),
+                        lineStyle: { color: colors['磨损'], width: 1.5 },
+                        itemStyle: { color: colors['磨损'] },
+                        showSymbol: false
+                    },
+                    {
+                        name: '扭矩',
+                        type: 'line',
+                        smooth: true,
+                        data: t.stress_group.slice(windowStart, windowEnd),
+                        lineStyle: { color: colors['扭矩'], width: 1.5 },
+                        itemStyle: { color: colors['扭矩'] },
+                        showSymbol: false
+                    }
+                ]
+            };
+
+            // 清除旧配置，防止缓存
+            trendChart.clear();
+            trendChart.setOption(option);
+            window.addEventListener('resize', () => trendChart.resize());
+        }
+
+        // 滑动窗口：模拟实时滚动更新曲线
+        function slideWindow() {
+    const t = dashboardData.trend;
+    if (windowEnd >= TOTAL_POINTS) {
+        console.log('窗口已滑动到末尾');
+        return;
+    }
+    windowStart++;
+    windowEnd++;
+    chartStartTime = new Date(chartStartTime.getTime() + 1000);
+    // 原来：取窗口末尾最新数据
+    // const currentIdx = windowEnd - 1;
+
+    // 修改：取窗口第一条，就能频繁看到前面的过载故障
+    const currentIdx = windowStart;
+
+    const diffTemp = t.motor2.map((v, i) => v - t.motor1[i]);
+    trendChart.setOption({
+        xAxis: { data: generateRealtimeTimestamps(chartStartTime, WINDOW_SIZE) },
+        series: [
+            { data: diffTemp.slice(windowStart, windowEnd) },
+            { data: t.speed_group.slice(windowStart, windowEnd) },
+            { data: t.wear_group.slice(windowStart, windowEnd) },
+            { data: t.stress_group.slice(windowStart, windowEnd) }
+        ]
+    });
+    updateSensorValues(currentIdx);
+    updateCurrentState(currentIdx);
+}
+
+        // RMS特征对比柱状图
+        function initRmsChart() {
+            rmsChart = echarts.init(document.getElementById('rmsChart'));
+            const data = dashboardData.rms_comparison;
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'axis', backgroundColor: 'rgba(0, 30, 60, 0.9)', borderColor: '#00d4ff', textStyle: { color: '#fff' } },
+                legend: { data: ['温度', '转速', '扭矩', '磨损', '功率'], textStyle: { color: '#88c8e8' }, top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: '20%', containLabel: true },
+                xAxis: { type: 'category', data: data.map(d => d.fault_desc), axisLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.3)' } }, axisLabel: { color: '#88c8e8', fontSize: 10, rotate: 15 } },
+                yAxis: { type: 'value', name: 'RMS值', nameTextStyle: { color: '#88c8e8' }, axisLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.3)' } }, axisLabel: { color: '#88c8e8', fontSize: 10 }, splitLine: { lineStyle: { color: 'rgba(0, 212, 255, 0.1)' } } },
+                series: [
+                    { name: '温度', type: 'bar', data: data.map(d => d.rms_temp), itemStyle: { color: '#ff6b6b' } },
+                    { name: '转速', type: 'bar', data: data.map(d => d.rms_speed), itemStyle: { color: '#00d4ff' } },
+                    { name: '扭矩', type: 'bar', data: data.map(d => d.rms_torque), itemStyle: { color: '#00ff88' } },
+                    { name: '磨损', type: 'bar', data: data.map(d => d.rms_wear), itemStyle: { color: '#ffaa00' } },
+                    { name: '功率', type: 'bar', data: data.map(d => d.rms_power), itemStyle: { color: '#cc88ff' } }
+                ]
+            };
+            rmsChart.setOption(option);
+            window.addEventListener('resize', () => rmsChart.resize());
+        }
+
+        // 故障占比饼图
+        function initFaultPieChart() {
+            faultPieChart = echarts.init(document.getElementById('faultPieChart'));
+            const pieData = dashboardData.fault_stats.map(d => ({ name: d.fault_desc.replace('故障', '').replace('运行', ''), value: d.count }));
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', backgroundColor: 'rgba(0, 30, 60, 0.9)', borderColor: '#00d4ff', textStyle: { color: '#fff' }, formatter: '{b}: {c} ({d}%)' },
+                legend: { orient: 'vertical', right: 5, top: 'middle', textStyle: { color: '#88c8e8', fontSize: 10 }, itemWidth: 10, itemHeight: 10, itemGap: 10 },
+                series: [{
+                    name: '数据量', type: 'pie', radius: ['28%', '48%'], center: ['32%', '50%'],
+                    avoidLabelOverlap: false,
+                    itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 },
+                    label: { show: false },
+                    emphasis: { label: { show: true, fontSize: 12, fontWeight: 'bold', color: '#fff' } },
+                    labelLine: { show: false },
+                    data: pieData,
+                    color: ['#00ff88', '#00d4ff', '#ffaa00', '#ff6b6b', '#cc88ff', '#ff88cc']
+                }]
+            };
+            faultPieChart.setOption(option);
+            window.addEventListener('resize', () => faultPieChart.resize());
+        }
+
+        // 页面加载完成后执行读取json
+        window.onload = loadData;
+    </script>
+</body>
+</html>

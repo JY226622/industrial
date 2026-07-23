@@ -1,0 +1,142 @@
+{
+  "dataset": "AI4I 2020 Predictive Maintenance Dataset",
+  "total_samples": 10000,
+  "fault_types": 6,
+  "random_forest": {
+    "accuracy": 0.9683333333333334,
+    "classification_report": {
+      "0": {
+        "precision": 0.9902063658621896,
+        "recall": 0.9775552486187845,
+        "f1-score": 0.9838401390095569,
+        "support": 2896.0
+      },
+      "1": {
+        "precision": 0.1,
+        "recall": 0.16666666666666666,
+        "f1-score": 0.125,
+        "support": 12.0
+      },
+      "2": {
+        "precision": 0.58,
+        "recall": 0.90625,
+        "f1-score": 0.7073170731707317,
+        "support": 32.0
+      },
+      "3": {
+        "precision": 0.6521739130434783,
+        "recall": 0.6,
+        "f1-score": 0.625,
+        "support": 25.0
+      },
+      "4": {
+        "precision": 0.5833333333333334,
+        "recall": 0.9655172413793104,
+        "f1-score": 0.7272727272727273,
+        "support": 29.0
+      },
+      "5": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 6.0
+      },
+      "accuracy": 0.9683333333333334,
+      "macro avg": {
+        "precision": 0.4842856020398336,
+        "recall": 0.602664859444127,
+        "f1-score": 0.5280716565755027,
+        "support": 3000.0
+      },
+      "weighted avg": {
+        "precision": 0.9735395500098848,
+        "recall": 0.9683333333333334,
+        "f1-score": 0.9700170326680163,
+        "support": 3000.0
+      }
+    }
+  },
+  "svm": {
+    "accuracy": 0.7443333333333333
+  },
+  "feature_importance": [
+    {
+      "feature": "motor4",
+      "importance": 0.31581110313378064
+    },
+    {
+      "feature": "motor5",
+      "importance": 0.30329282404026936
+    },
+    {
+      "feature": "motor3",
+      "importance": 0.2057405853975199
+    },
+    {
+      "feature": "motor1",
+      "importance": 0.11048605979921314
+    },
+    {
+      "feature": "motor2",
+      "importance": 0.06466942762921696
+    }
+  ],
+  "confusion_matrix": [
+    [
+      2831,
+      17,
+      21,
+      8,
+      19,
+      0
+    ],
+    [
+      10,
+      2,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      29,
+      0,
+      1,
+      0
+    ],
+    [
+      10,
+      0,
+      0,
+      15,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      28,
+      0
+    ],
+    [
+      5,
+      1,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "fault_names": {
+    "0": "正常",
+    "1": "工具磨损",
+    "2": "散热故障",
+    "3": "功率故障",
+    "4": "过载故障",
+    "5": "随机故障"
+  }
+}
