@@ -40,13 +40,11 @@ industrial_iot_project/
 ├── src/                          # 源代码
 │   ├── main.py
 ├── visualization/                # 可视化大屏
-│   ├── dashboard.html            # ECharts大屏
-│   └── dashboard_data.json       # 大屏数据
-└── report/                       # 实验报告
-    └── 实验报告.md
+    ├── dashboard.html            # ECharts大屏
+    └── dashboard_data.json       # 大屏数据
 ```
 
-## 12通道监测指标
+## 通道监测指标
 | 通道 | 名称 | 说明 |
 |------|------|------|
 | motor1 | 空气温度 | 环境温度 |
@@ -54,7 +52,7 @@ industrial_iot_project/
 | motor3 | 转速 | 电机转速 |
 | motor4 | 扭矩 | 输出扭矩 |
 | motor5 | 工具磨损 | 刀具磨损量 |
-| motor6 | 温差 | 过程-空气温度差 |
+|        | 温差 | 过程-空气温度差 |
 
 ## 故障类型
 1. 正常运行
